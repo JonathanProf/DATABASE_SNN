@@ -12,10 +12,10 @@ using namespace std;
 #define NUM_NEURONS 400
 #define NUM_PIXELS 784
 #define SINGLE_SAMPLE_TIME 64
-#define PATH_SAMPLES_POISSON "../DATABASE_SNN/BD/inputSamples/%05d_inputSpikesPoisson_64ms.dat"
+#define PATH_SAMPLES_POISSON "../DATABASE_SNN/inputSamples/%05d_inputSpikesPoisson_64ms.dat"
 #define PATH_PARAMETERS_NET "../DATABASE_SNN/window64ms/BD400_64ms/"
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
-#define TOTAL_SAMPLES static_cast<int>(2)
+#define TOTAL_SAMPLES static_cast<int>(10)
 
 int main()
 {
@@ -46,10 +46,6 @@ int main()
     unsigned short int *assignments;
     float *proportions;
 
-    float *x;  // Firing traces
-    float *xE; // Firing traces
-    float trace_decay = 0.9512f; // Decay and set spike traces.
-
     unsigned short int digits[10] = {0};
 
     float *vE;
@@ -77,12 +73,6 @@ int main()
 
     spikesXePos = new(std::nothrow) bool[NUM_PIXELS]{0};
     assert(spikesXePos != nullptr);
-
-    x = new(std::nothrow) float[NUM_PIXELS]{0.0};
-    assert( x != nullptr );
-
-    xE = new(std::nothrow) float[NUM_NEURONS]{0.0};
-    assert( xE != nullptr );
 
     vE = new(std::nothrow) float[NUM_NEURONS]{0.0};
     assert( vE != nullptr );
@@ -168,17 +158,40 @@ int main()
         //! Simulate network activity for SINGLE_SAMPLE_TIME timesteps.
         for (int t = 0; t < SINGLE_SAMPLE_TIME; ++t)
         {
+            uint32_t datoAnalisis = 0;
+            uint32_t resultOP = 0;
+            uint8_t desplazamiento = 0;
             for (int j = 0; j < NUM_PIXELS; ++j)
             {
-                //x[j] *=  trace_decay;
+                // Los números pares serán el indice del pixel
+                // La información del tiempo empieza desde el bit más significativo
+                //  0 1
+                //  2 3
+                //  4 5
+                //  6 7
+                //  8 9
+                // 10 11
 
+                //!* Se desenvuelve el bucle ya que solo son dos posiciones del arreglo
+                //input_sample[ j*2   ]
+                //input_sample[ j*2+1 ]
+
+                datoAnalisis = ( t < 32 ) ? input_sample[ j*2 ] : input_sample[ j*2+1 ];
+                desplazamiento = ( t < 32 ) ? (31 - t) : (63 - t);
+                resultOP = datoAnalisis & (1 << desplazamiento);
+                resultOP >>= desplazamiento;
+
+                // Se verifica que la información sea binaria
+                assert( resultOP == 0 or resultOP == 1);
+                spikesXePre[j] = resultOP;
+                /*
                 if ( input_sample[j+t*NUM_PIXELS] == 1 ) {
-                    //x[j] = 1.0;
                     spikesXePre[j] = 1;
                 }
                 else{
                     spikesXePre[j] = 0;
                 }
+                */
             }
 
 
@@ -309,7 +322,7 @@ int main()
         std::cout << "Digit class: " << indWinner << std::endl;
 
         std::ofstream fileLabels;
-        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_24_02_2022.csv";
+        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_25_02_2022.csv";
         fileLabels.open(filenameLabels, std::ofstream::out | std::ofstream::app);
         if (!fileLabels.is_open())
         {
@@ -337,13 +350,11 @@ int main()
             spikes_Ae_Ai_pre[i] = 0;
             spikes_Ai_Ae_pos[i] = 0;
             spikes_Ai_Ae_pre[i] = 0;
-            xE[i] = 0.0;
         }
 
         for (int i = 0; i < 784; ++i) {
             spikesXePre[i] = 0;
             spikesXePos[i] = 0;
-            x[i] = 0.0;
         }
     }
 

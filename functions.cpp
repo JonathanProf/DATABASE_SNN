@@ -192,18 +192,20 @@ void getInputSample( uint32_t *input, const std::string fileName, const int row,
 {    
     std::fstream raw( fileName, std::ios::in | std::ios::binary );
 
-    if( raw.is_open() ){
-        uint32_t n;
-        for (uint16_t pos = 0; ; ++pos) {
-            raw.read(reinterpret_cast<char*>(&n), sizeof(n));
-            if( raw.eof() ){
-                break;
-            }
-            assert( pos < row * col );
-            input[pos] = n;
-            std::cout << std::dec << pos;
-            std::cout << " -> " << std::hex << input[pos] << std::endl;
+    assert( raw.is_open() == true );
+    uint32_t n;
+    for (uint16_t pos = 0; ; ++pos) {
+        raw.read(reinterpret_cast<char*>(&n), sizeof(n));
+        if( raw.eof() ){
+            break;
         }
+        assert( pos < row * col );
+        input[pos] = n;
+
+#if DEBUG_INPUT == 1
+        std::cout << std::dec << pos;
+        std::cout << " -> " << std::hex << input[pos] << std::endl;
+#endif
     }
 
     raw.close();

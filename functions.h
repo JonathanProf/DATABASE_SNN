@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 #include <cassert>
+
+#define DEBUG_INPUT false
 #define NUM_NEURONS 400
 
 // Function prototypes
