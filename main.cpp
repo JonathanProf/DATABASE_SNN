@@ -9,16 +9,17 @@
 
 using namespace std;
 
-#define NUM_NEURONS 800
+#define NUM_NEURONS 400
 #define NUM_PIXELS 784
 #define SINGLE_SAMPLE_TIME 64
-#define PATH_SAMPLES_POISSON "../SpikingNeuralNetwork/BD/inputSamples/%05d_inputSpikesPoisson.csv"
-#define PATH_PARAMETERS_NET "../SpikingNeuralNetwork/BD/window64ms/BD800_64ms/"
-#define PATH_RESULTS_NET "../SpikingNeuralNetwork/BD/classification/"
-#define TOTAL_SAMPLES static_cast<int>(10000)
+#define PATH_SAMPLES_POISSON "../DATABASE_SNN/BD/inputSamples/%05d_inputSpikesPoisson_64ms.dat"
+#define PATH_PARAMETERS_NET "../DATABASE_SNN/window64ms/BD400_64ms/"
+#define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
+#define TOTAL_SAMPLES static_cast<int>(2)
 
 int main()
 {
+    assert( sizeof (uint32_t) == 4 );
     //! =====     =====     =====
     //! Variables Inicialization
     //! =====     =====     =====
@@ -31,7 +32,7 @@ int main()
     float *weightsXeAe; // connections Xe -> Ae
     float *weightsAeAi; // connections Ae -> Ai
     float *weightsAiAe; // connections Ae <- Ai
-    bool  *input_sample;
+    uint32_t  *input_sample;
 
     // Check for spiking neurons
     bool *spikesXePre; // Spike occurrences Input
@@ -100,7 +101,8 @@ int main()
     refrac_countI = new(std::nothrow) int[NUM_NEURONS]{0};
     assert( refrac_countI != nullptr );
 
-    input_sample = new(std::nothrow) bool[SINGLE_SAMPLE_TIME*NUM_PIXELS];
+    unsigned int tamArr = SINGLE_SAMPLE_TIME/32;
+    input_sample = new(std::nothrow) uint32_t[NUM_PIXELS * tamArr]{0};
     assert( input_sample != nullptr );
 
     spike_count = new(std::nothrow) unsigned short int[NUM_NEURONS]{0};
@@ -161,7 +163,7 @@ int main()
 
         std::string filename(buffer);
 
-        getInputSample( input_sample, filename, SINGLE_SAMPLE_TIME, NUM_PIXELS);
+        getInputSample( input_sample, filename, NUM_PIXELS, tamArr);
 
         //! Simulate network activity for SINGLE_SAMPLE_TIME timesteps.
         for (int t = 0; t < SINGLE_SAMPLE_TIME; ++t)
@@ -307,7 +309,7 @@ int main()
         std::cout << "Digit class: " << indWinner << std::endl;
 
         std::ofstream fileLabels;
-        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N.csv";
+        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_24_02_2022.csv";
         fileLabels.open(filenameLabels, std::ofstream::out | std::ofstream::app);
         if (!fileLabels.is_open())
         {

@@ -4,14 +4,15 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#define NUM_NEURONS 800
+#include <cassert>
+#define NUM_NEURONS 400
 
 // Function prototypes
 void getAssignments(unsigned short int *assignments, std::string fileName );
 void getProportions(float *proportions, const int rows, const int cols, const std::string fileName );
 void getWeights( float* weights, const std::string fileName, const int row, const int col );
 void getTheta(float *theta, const std::string fileName );
-void getInputSample(bool *arr, const std::string fileName, const int row, const int col );
+void getInputSample(uint32_t *input, const std::string fileName, const int row, const int col );
 float dotPointInputs(float *syn, bool *pixels_x_time, unsigned int neuronIndex );
 float dotPointLayers(float *syn, bool *spikeVector);
 int winner( bool *spikesE);
