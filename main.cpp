@@ -12,10 +12,10 @@ using namespace std;
 #define NUM_NEURONS 400
 #define NUM_PIXELS 784
 #define SINGLE_SAMPLE_TIME 64
-#define PATH_SAMPLES_POISSON "../DATABASE_SNN/inputSamples/%05d_inputSpikesPoisson_64ms.dat"
+#define PATH_SAMPLES_POISSON "../DATABASE_SNN/inputSamples_64ms/%05d_inputSpikesPoisson_64ms.dat"
 #define PATH_PARAMETERS_NET "../DATABASE_SNN/window64ms/BD400_64ms/"
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
-#define TOTAL_SAMPLES static_cast<int>(10)
+#define TOTAL_SAMPLES static_cast<int>(10000)
 
 int main()
 {
@@ -322,7 +322,7 @@ int main()
         std::cout << "Digit class: " << indWinner << std::endl;
 
         std::ofstream fileLabels;
-        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_25_02_2022.csv";
+        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms.csv";
         fileLabels.open(filenameLabels, std::ofstream::out | std::ofstream::app);
         if (!fileLabels.is_open())
         {
