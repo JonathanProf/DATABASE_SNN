@@ -88,57 +88,27 @@ void getProportions(float *proportions , const int rows, const int cols, const s
     infile.close();
 }
 
-void getWeights( float *weights, const std::string fileName, const int row, const int col )
+void getWeights(float *weights, const std::string fileName, const uint32_t pixel, const uint32_t neuron )
 {
-    std::string data;
+    std::fstream raw( fileName, std::ios::in | std::ios::binary );
 
-    std::ifstream infile;
-    infile.open( fileName );
-
-    if (!infile.is_open())
-    {
-        std::cout << "Error opening file in function " << __FUNCTION__ << " in line: " << __LINE__ << std::endl;
-        exit(1);
-    }
-
-    std::cout << "Read file" << std::endl;
-
-    infile >> data;
-    if (infile.eof())
-    {
-        std::cout << "End of file " << fileName <<  " reached successfully" << std::endl;
-    }
-
-    int n1 = 0, n2 = 0, longChar = 0;
-    for (int indx = 0; indx < row*col; ++indx) {
-        n2 = data.find(",", n1);
-        longChar = n2 - n1;
-        try {
-
-            if (n2 == (int)std::string::npos) {
-                //cout << "not found\n";
-                n2 = data.length();
-                longChar = n2 - n1;
-
-                //cout << "found: " << s.substr(n1,longChar) << endl;
-                weights[ indx ] = static_cast<float>( std::stod(data.substr(n1,longChar)) );
-                //cout << "found: " << weights[indx] << endl;
-            } else {
-
-                //cout << "found: " << s.substr(n1,longChar) << endl;
-                std::string tmp = data.substr(n1,longChar);
-                weights[ indx ] = static_cast<float>(std::stod(tmp));
-                //cout << "found: " << weights[indx] << endl;
-            }
-            n1 = n2 + 1;
-        } catch (std::exception& e)
-        {
-            std::cerr << "Standard exception: (" << e.what() << ") indx (" << indx << ") - LINE -> " << __LINE__ << " - FUNC -> " << __func__ << std::endl;
-            exit(1);
+    assert( raw.is_open() == true );
+    float n;
+    for (uint32_t pos = 0; ; ++pos) {
+        raw.read(reinterpret_cast<char*>(&n), sizeof(n));
+        if( raw.eof() ){
+            break;
         }
+        assert( pos < pixel * neuron );
+        weights[pos] = n;
+
+#if DEBUG_INPUT == 1
+        std::cout << std::dec << pos;
+        std::cout << " -> " << std::hex << input[pos] << std::endl;
+#endif
     }
 
-    infile.close();
+    raw.close();
 }
 
 void getTheta( float *theta, const std::string fileName )

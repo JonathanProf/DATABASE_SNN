@@ -10,7 +10,7 @@ pathBindsOut = 'labelsBindsnetOut'+str(n_neurons)+'N_'+str(time)+'ms.csv'
 # Labels Comparison
 fb_1 = np.fromfile( _path + 'labelsBindsnetIn'+str(n_neurons)+'N_'+str(time)+'ms.csv', dtype = np.int8 ,sep='\n')
 fb_2 = np.fromfile( _path + 'labelsQt'+str(n_neurons)+'N_64ms.csv', dtype = np.int8 ,sep='\n')
-#fb_3 = np.fromfile( _path + pathBindsOut, dtype = np.int8 ,sep='\n')
+fb_3 = np.fromfile( _path + 'labelsBindsnetOut'+str(n_neurons)+'N_'+str(time)+'ms.csv', dtype = np.int8 ,sep='\n')
 
 cmp1 = 0
     
@@ -20,12 +20,12 @@ for indx in range(tam):
     if( fb_1[indx] == fb_2[indx] ):
         cmp1 += 1
 cmp1 = cmp1 / tam        
-#cmp2 = np.count_nonzero(fb_1 == fb_3) / len(fb_1)
+cmp2 = np.count_nonzero(fb_1 == fb_3) / len(fb_1)
 
 print('{0:=>50}'.format(''))
 print( 'Bindsnet In <--> Qt -> {0:2.2f} % for {1} samples'.format(cmp1*100, tam) )
 print('{0:=>50}'.format(''))
-#print( 'Bindsnet Labels In <--> Bindsnet Labels Out -> {0:2.2f} %'.format(cmp2*100) )
+print( 'Bindsnet Labels In <--> Bindsnet Labels Out -> {0:2.2f} %'.format(cmp2*100) )
 print('{0:=>50}'.format(''))
 
 #%% Lectura de archivos
