@@ -7,24 +7,40 @@
 #include <fstream>
 #include "functions.h"
 
-// Se cargaron los pesos de la red de forma binaria para X_to_Ae y el resultado fue exitoso
-/*! TODO: Cargar los valores de theta de forma binaria para comprobar resultados
- *  ya que para t = 1, difieren los resultados cuando se mira vE[0 : 399]
+/*
  *  TODO: Comprobar que los voltajes para t = 1 en la capa excitación son iguales luego de haber cargado la información de forma binaria
  */
 
 using namespace std;
 
 #define NUM_NEURONS 400
+
 #define NUM_PIXELS 784
+
 #define SINGLE_SAMPLE_TIME 64
+
 #define PATH_SAMPLES_POISSON "../DATABASE_SNN/inputSamples_64ms/%05d_inputSpikesPoisson_64ms.dat"
+
 #define PATH_PARAMETERS_NET "../DATABASE_SNN/window64ms/BD400_64ms/"
+
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
+
 #define TOTAL_SAMPLES static_cast<int>(10)
 
 int main()
 {
+    /*
+    float v_rest_e = -65.0;     // [mV]
+    float v_reset_e = -60.0;    // [mV]
+    float v_thresh_e = -52.0;   // [mV]
+    int refrac_e = 5;           // [ms]
+
+    float v_rest_i = -60.0;     // [mV]
+    float v_reset_i = -45.0;    // [mV]
+    float v_thresh_i = -40.0;   // [mV]
+    int refrac_i = 2;           // [ms]
+    int dt = 1;
+    */
     assert( sizeof (uint32_t) == 4 );
     assert( sizeof (uint16_t) == 2 );
     assert( sizeof (float) == 4 );
@@ -54,9 +70,8 @@ int main()
     uint16_t *spikes_Ai_Ae_pre = nullptr;
     uint16_t *spikes_Ai_Ae_pos = nullptr;
 
-    unsigned short int *spike_count = nullptr;
-    unsigned short int *assignments = nullptr;
-    float *proportions = nullptr;
+    uint32_t *spike_count = nullptr;
+    uint8_t *assignments = nullptr;
 
     unsigned short int digits[10] = {0};
 
@@ -65,18 +80,6 @@ int main()
 
     int *refrac_countE = nullptr;       // Refractory period counters
     int *refrac_countI = nullptr;       // Refractory period counters
-    int dt = 1;
-
-    //! Constants definition
-    float v_rest_e = -65.0;     // [mV]
-    float v_reset_e = -60.0;    // [mV]
-    float v_thresh_e = -52.0;   // [mV]
-    int refrac_e = 5;           // [ms] Refractory time
-
-    float v_rest_i = -60.0;     // [mV]
-    float v_reset_i = -45.0;    // [mV]
-    float v_thresh_i = -40.0;   // [mV]
-    int refrac_i = 2;           // [ms] Refractory time
 
     //! [Step 1] Data structure initialization
 
@@ -105,8 +108,8 @@ int main()
     assert( vI != nullptr );
 
     for (int indx = 0; indx < NUM_NEURONS; ++indx) {
-        vE[indx] = v_rest_e;
-        vI[indx] = v_rest_i;
+        vE[indx] = -65.0f;      // v_rest_e = -65.0[mV]
+        vI[indx] = -60.0f;    // v_rest_i = -60.0[mV]
     }
 
     refrac_countE = new(std::nothrow) int[NUM_NEURONS]{0};
@@ -119,7 +122,7 @@ int main()
     input_sample = new(std::nothrow) uint32_t[NUM_PIXELS * tamArrSamples]{0};
     assert( input_sample != nullptr );
 
-    spike_count = new(std::nothrow) unsigned short int[NUM_NEURONS]{0};
+    spike_count = new(std::nothrow) uint32_t[NUM_NEURONS]{0};
     assert( spike_count != nullptr );
 
     //! [Step 2] Loading data from files
@@ -152,20 +155,14 @@ int main()
     theta = new(std::nothrow) float[NUM_NEURONS]{0};
     assert( theta != nullptr );
 
-    filename = std::string(PATH_PARAMETERS_NET) + "theta.csv";
-    getTheta( theta, filename );
+    filename = std::string(PATH_PARAMETERS_NET) + "theta_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
+    getTheta( theta, filename, NUM_NEURONS );
 
-    assignments = new(std::nothrow) unsigned short int[NUM_NEURONS]{0};
+    assignments = new(std::nothrow) uint8_t[NUM_NEURONS]{0};
     assert( assignments != nullptr );
 
-    filename = std::string(PATH_PARAMETERS_NET) + "assignments.csv";
-    getAssignments( assignments, filename );
-
-    proportions = new(std::nothrow) float[NUM_NEURONS*10]{0};
-    assert( proportions != nullptr );
-
-    filename = std::string(PATH_PARAMETERS_NET) + "proportions.csv";
-    getProportions( proportions, NUM_NEURONS, 10, filename );
+    filename = std::string(PATH_PARAMETERS_NET) + "assignments_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
+    getAssignments( assignments, filename, NUM_NEURONS );
 
     time_t start, end;
     time(&start);
@@ -468,8 +465,8 @@ int main()
         //! =====     =====     =====
         for (int i = 0; i < NUM_NEURONS; ++i) {
 
-            vE[i] = v_rest_e;
-            vI[i] = v_rest_i;
+            vE[i] = -65.0f; // v_rest_e = -65.0 [mV]
+            vI[i] = -60.0f; // v_rest_i = -60.0 [mV]
 
             refrac_countE[i] = 0;
             refrac_countI[i] = 0;

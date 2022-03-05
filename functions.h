@@ -6,21 +6,9 @@
 #include <iostream>
 #include <cassert>
 
-#define DEBUG_INPUT false
-#define NUM_NEURONS 400
-
-// Function prototypes
-void getAssignments(unsigned short int *assignments, std::string fileName );
-void getProportions(float *proportions, const int rows, const int cols, const std::string fileName );
 void getWeights(float* weights, const std::string fileName, const uint32_t pixel, const uint32_t neuron );
-void getTheta(float *theta, const std::string fileName );
+void getTheta(float *theta, const std::string fileName , const uint32_t numNeurons);
 void getInputSample(uint32_t *input, const std::string fileName, const int row, const int col );
-float dotPointInputs(float *syn, bool *pixels_x_time, unsigned int neuronIndex );
-float dotPointLayers(float *syn, bool *spikeVector);
-int winner( bool *spikesE);
-void setOneSpike(bool *spikes, int indexWin, unsigned short int *digits, unsigned short int *assignments);
-void resetInputs(bool *spikesE, bool *spikesI);
-void resetStateVariables();
-int classification(unsigned short *spike_count, unsigned short *assignments);
+void getAssignments(uint8_t *assignments, std::string fileName , const uint32_t numNeurons);
 
 #endif // FUNCTIONS_H
