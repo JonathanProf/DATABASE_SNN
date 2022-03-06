@@ -25,7 +25,7 @@ using namespace std;
 
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
 
-#define TOTAL_SAMPLES static_cast<int>(10)
+#define TOTAL_SAMPLES static_cast<int>(10000)
 
 int main()
 {
@@ -409,6 +409,7 @@ int main()
             // The arrays are exchanged for the next iteration of time
             for (int indx = 0; indx < tamVectorPixels; ++indx) {
                 spikesXePos[indx] = spikesXePre[indx];
+                spikesXePre[indx] = 0;
             }
 
             for (int indx = 0; indx < tamVector; ++indx){
