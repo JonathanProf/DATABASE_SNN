@@ -322,7 +322,7 @@ int main()
         std::cout << "Digit class: " << indWinner << std::endl;
 
         std::ofstream fileLabels;
-        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms.csv";
+        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_bin_Input.csv";
         fileLabels.open(filenameLabels, std::ofstream::out | std::ofstream::app);
         if (!fileLabels.is_open())
         {
