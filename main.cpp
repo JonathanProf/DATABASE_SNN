@@ -13,6 +13,8 @@
 
 using namespace std;
 
+#define PRINT_ENABLE false
+
 #define NUM_NEURONS 400
 
 #define NUM_PIXELS 784
@@ -25,7 +27,7 @@ using namespace std;
 
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
 
-#define TOTAL_SAMPLES static_cast<int>(10000)
+#define TOTAL_SAMPLES static_cast<int>(10)
 
 int main()
 {
@@ -234,7 +236,7 @@ int main()
                 assert( groupExc < NUM_NEURONS/16);
 
                 // Decay voltages and adaptive thresholds.
-                vE[j] = 0.99f * (vE[j] - (-65.0f)) + (-65.0f);
+                vE[j] = 0.990049839019775390625 * (vE[j] - (-65.0f)) + (-65.0f);
 
                 // Integrate inputs.
                 vSyn = 0.0;
@@ -286,6 +288,11 @@ int main()
                 if( refrac_countE[j] <= 0 )
                     vE[j] += vSyn;
 
+                if( PRINT_ENABLE and t >= 34 and (j < 5 or j >= 395)){
+                    printf("vE[%d] = %.25f\n", j, vE[j]);
+                    cout.flush();
+                }
+
                 // Decrement refractory counters.
                 refrac_countE[j] -= 1; // dt = 1
 
@@ -314,6 +321,9 @@ int main()
                 if( ( spikes_Ae_Ai_pre[group] & (1 << index) ) != 0 ){
                     //cout << "[" << t << ", " << indx << "]" << endl;
                     indexWin = (indexWin == -1) ? indx : indexWin;
+                    if( PRINT_ENABLE ){
+                        printf("\nt=[%d]; indexWin[%d]",t,indx); cout << endl;
+                    }
                 }
             }
 
@@ -353,7 +363,7 @@ int main()
 
             for (int i = 0; i < NUM_NEURONS; ++i) {
                 // Decay voltages.
-                vI[i] = 0.9048f * (vI[i] - (-60.0f)) + (-60.0f);
+                vI[i] = 0.904837429523468017578125 * (vI[i] - (-60.0f)) + (-60.0f);
 
                 // Integrate inputs.
                 vSyn = 0.0;
