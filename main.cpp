@@ -7,15 +7,15 @@
 #include <fstream>
 #include "functions.h"
 
-/*
- *  TODO: Comprobar que los voltajes para t = 1 en la capa excitación son iguales luego de haber cargado la información de forma binaria
- */
-
 using namespace std;
 
-#define PRINT_ENABLE false
+#define DEBUG 0
 
-#define NUM_NEURONS 400
+#define PRINT_EXC_NEURONS_FILE false
+#define PRINT_INH_NEURONS_FILE false
+#define PRINT_ENABLE_INDEX false
+#define SAVE_FILE true
+#define SAVE_SYNAPSE false
 
 #define NUM_PIXELS 784
 
@@ -23,14 +23,20 @@ using namespace std;
 
 #define PATH_SAMPLES_POISSON "../DATABASE_SNN/inputSamples_64ms/%05d_inputSpikesPoisson_64ms.dat"
 
-#define PATH_PARAMETERS_NET "../DATABASE_SNN/window64ms/BD400_64ms/"
-
 #define PATH_RESULTS_NET "../DATABASE_SNN/classification/"
 
-#define TOTAL_SAMPLES static_cast<int>(10)
+#define TOTAL_SAMPLES static_cast<int>(10000)
 
-int main()
+#define fileNameIndexNeurons "../DATABASE_SNN/classification/indexSampleCpp.dat";
+
+int main(int argc, char *argv[])
 {
+    assert(argc > 2);
+    // constants
+    const uint16_t NUM_NEURONS = stoi( argv[1] );
+    const string PATH_PARAMETERS_NET = "../DATABASE_SNN/window64ms/BD" + string( argv[1] ) + "_64ms/";
+    const uint16_t WG = stoi(argv[2]);
+    const string filenameLabels = string(PATH_RESULTS_NET) + string("labels_CppSerial_QT_") + std::to_string(NUM_NEURONS) +string("N_64ms.csv");
     /*
     float v_rest_e = -65.0;     // [mV]
     float v_reset_e = -60.0;    // [mV]
@@ -47,13 +53,18 @@ int main()
     assert( sizeof (uint16_t) == 2 );
     assert( sizeof (float) == 4 );
 
+    //! array to save the index of excitatory neurons that generate a spike in the time t
+    uint16_t *indexArray;
+    if( (indexArray = (uint16_t *)calloc(TOTAL_SAMPLES*NUM_NEURONS*SINGLE_SAMPLE_TIME, sizeof(uint16_t))) == NULL )
+        perror("memory allocation for a");
+
     uint16_t tamVector = NUM_NEURONS / 16; //(sizeof (uint16_t)*8)
     uint16_t tamVectorPixels = NUM_PIXELS / 16; //(sizeof (uint16_t)*8)
 
     //! =====     =====     =====
     //! Variables Inicialization
     //! =====     =====     =====
-    float vSyn = 0.0;
+    float iSyn = 0.0;
 
     float weights_Ae_Ai_constant = 22.5;
     float weights_Ai_Ae_constant = -120.0;
@@ -132,7 +143,8 @@ int main()
     weightsXeAe = new(std::nothrow) float[NUM_PIXELS*NUM_NEURONS]{0};
     assert( weightsXeAe != nullptr );
 
-    std::string filename = std::string(PATH_PARAMETERS_NET) + "XeAe_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
+    std::string filename(PATH_PARAMETERS_NET);
+    filename += "XeAe_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
     getWeights(weightsXeAe, filename, NUM_PIXELS, NUM_NEURONS);
 
     // The weight vector for Ae -> Ai layer is initialized.
@@ -157,13 +169,15 @@ int main()
     theta = new(std::nothrow) float[NUM_NEURONS]{0};
     assert( theta != nullptr );
 
-    filename = std::string(PATH_PARAMETERS_NET) + "theta_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
+    filename = (PATH_PARAMETERS_NET);
+    filename += "theta_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
     getTheta( theta, filename, NUM_NEURONS );
 
     assignments = new(std::nothrow) uint8_t[NUM_NEURONS]{0};
     assert( assignments != nullptr );
 
-    filename = std::string(PATH_PARAMETERS_NET) + "assignments_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
+    filename = PATH_PARAMETERS_NET;
+    filename += "assignments_" + std::to_string(NUM_NEURONS) + "N_" + std::to_string(SINGLE_SAMPLE_TIME) + "ms.dat";
     getAssignments( assignments, filename, NUM_NEURONS );
 
     time_t start, end;
@@ -171,7 +185,18 @@ int main()
     //! =====     =====     =====
     //! Run Simulation
     //! =====     =====     =====
+
+    // Variables to debug the program and verify the synapse
+    float *iSyn_Xe_Ae = new float[NUM_NEURONS]{0.0f};
+    float *iSyn_Ai_Ae = new float[NUM_NEURONS]{0.0f};
+
     for (int numSample = 1; numSample <= TOTAL_SAMPLES; ++numSample) {
+
+        cout << numSample << endl;
+
+        if( PRINT_ENABLE_INDEX ){
+            cout << "numSample[" << numSample << "]=" << numSample-1 << endl;
+        }
 
         char buffer[100];
         sprintf( buffer, PATH_SAMPLES_POISSON ,numSample);
@@ -214,19 +239,17 @@ int main()
                 index = j % 16; //(sizeof (uint16_t) * 8)
                 group = (j - index) / 16; //(sizeof (uint16_t) * 8)
                 spikesXePre[group] |= (resultOP << index);
-                /*
-                if ( input_sample[j+t*NUM_PIXELS] == 1 ) {
-                    spikesXePre[j] = 1;
-                }
-                else{
-                    spikesXePre[j] = 0;
-                }
-                */
             }
 
             uint16_t indexExc = 0, groupExc = 0;
-            // 1. Update E neurons
 
+            for (int i = 0; i < NUM_PIXELS; ++i)
+                iSyn_Xe_Ae[i] = 0.0f;
+
+            for (int i = 0; i < NUM_NEURONS; ++i)
+                iSyn_Ai_Ae[i] = 0.0f;
+
+            // 1. Update E neurons
             for (unsigned int j = 0; j < NUM_NEURONS; ++j)
             {
                 indexExc = j % 16; //(sizeof (uint16_t) * 8)
@@ -235,36 +258,7 @@ int main()
                 assert( indexExc < 16);
                 assert( groupExc < NUM_NEURONS/16);
 
-                // Decay voltages and adaptive thresholds.
-                vE[j] = 0.990049839019775390625 * (vE[j] - (-65.0f)) + (-65.0f);
-
-                // Integrate inputs.
-                vSyn = 0.0;
-
-                int32_t res = 0;
-                void *ptrF = nullptr;
-                int32_t resultBits = 0;
-
-                for (unsigned int i = 0; i < NUM_NEURONS; ++i) {
-
-                    index = i % 16; //(sizeof (uint16_t) * 8)
-                    group = (i - index) / 16; //(sizeof (uint16_t) * 8)
-
-                    assert( index < 16);
-                    assert( group < NUM_NEURONS/16);
-
-                    ptrF = &weightsAiAe[j*NUM_NEURONS+i];
-
-                    res = (spikes_Ai_Ae_pos[group] & (1 << index)) >> index;
-                    res = ~res;
-                    res++;
-                    // Computo de la sinapsis entre flotante y entero usando casting de apuntadores
-                    resultBits = res & *(int*)ptrF;
-
-                    //vSyn += spikes_Ai_Ae_pos[i] ? weightsAiAe[j*NUM_NEURONS+i] : 0.0f ;
-                    vSyn += *(float*)&resultBits;
-                }
-
+                //! The synapse is updated from the input layer Xe -> Ae
                 for (int i = 0; i < NUM_PIXELS; ++i) {
 
                     index = i % 16; //(sizeof (uint16_t) * 8)
@@ -273,41 +267,63 @@ int main()
                     assert( index < 16);
                     assert( group < NUM_PIXELS/16);
 
-                    ptrF = &weightsXeAe[i*NUM_NEURONS+j];
-
-                    res = (spikesXePos[group] & (1 << index)) >> index;
-                    res = ~res;
-                    res++;
-                    // Computo de la sinapsis entre flotante y entero usando casting de apuntadores
-                    resultBits = res & *(int*)ptrF;
-
-                    //vSyn += spikesXePos[i] ? weightsXeAe[i*NUM_NEURONS+j] : 0.0f ;
-                    vSyn += *(float*)&resultBits;
+                    iSyn_Xe_Ae[j] += ( (spikesXePos[group]) & (1 << index) ) ? weightsXeAe[i*NUM_NEURONS+j] : 0;
                 }
+
+                //! synapses are updated from inhibitory neurons Ai -> Ae
+                for (unsigned int i = 0; i < NUM_NEURONS; ++i) {
+
+                    index = i % 16; //(sizeof (uint16_t) * 8)
+                    group = (i - index) / 16; //(sizeof (uint16_t) * 8)
+
+                    assert( index < 16);
+                    assert( group < NUM_NEURONS/16);
+
+                    iSyn_Ai_Ae[j] += ( (spikes_Ai_Ae_pos[group]) & (1 << index) ) ? weightsAiAe[j*NUM_NEURONS+i] : 0.0f;
+                }
+
+                iSyn = iSyn_Xe_Ae[j] + iSyn_Ai_Ae[j];
+
+                // Decay voltages and adaptive thresholds.
+                vE[j] = 0.9900498390197753906250000 * (vE[j] - (-65.0f)) + (-65.0f);
 
                 if( refrac_countE[j] <= 0 )
-                    vE[j] += vSyn;
-
-                if( PRINT_ENABLE and t >= 34 and (j < 5 or j >= 395)){
-                    printf("vE[%d] = %.25f\n", j, vE[j]);
-                    cout.flush();
-                }
+                    vE[j] += iSyn;
 
                 // Decrement refractory counters.
                 refrac_countE[j] -= 1; // dt = 1
 
                 // Check for spiking neurons.
-                spikes_Ae_Ai_pre[groupExc] |= ( (vE[j] > ( (-52.0) + theta[j])) ? 1 : 0 ) << indexExc;
+                spikes_Ae_Ai_pre[groupExc] |= ( (vE[j] > ( (-52.0f) + theta[j])) ? (1 << indexExc) : 0 ) ;
 
                 // Refractoriness, voltage reset, and adaptive thresholds.
-                if( (spikes_Ae_Ai_pre[groupExc] & (1 << indexExc) )  != 0 ){
+                if( (spikes_Ae_Ai_pre[groupExc]) & (1 << indexExc) ){
                     refrac_countE[j] = 5; // refrac_e = 5;      // [ms]
-                    vE[j] = -60.0F; // v_reset_e = -60.0;    // [mV]
+                    vE[j] = -60.0f; // v_reset_e = -60.0;    // [mV]
                 }
 
             }
 
+            //! Save the synapse in the current directory
+#if SAVE_SYNAPSE == true
+            std::ofstream raw1 ("C:/Users/jonfe/Documents/GitHub/DATABASE_SNN/classification/iSynXeAeCpp.dat", std::ofstream::binary);
+            assert( raw1.is_open() == true );
+            raw1.write((char *)iSyn_Xe_Ae, NUM_NEURONS*sizeof(float));
+            raw1.close();
 
+            std::ofstream raw2 ("C:/Users/jonfe/Documents/GitHub/DATABASE_SNN/classification/iSynAiAeCpp.dat", std::ofstream::binary);
+            assert( raw2.is_open() == true );
+            raw2.write((char *)iSyn_Ai_Ae, NUM_NEURONS*sizeof(float));
+            raw2.close();
+#endif
+
+            // PRINT_EXC_NEURONS_FILE
+#if PRINT_EXC_NEURONS_FILE == true
+            std::ofstream raw3 ("C:/Users/jonfe/Documents/GitHub/DATABASE_SNN/classification/vECpp.dat", std::ofstream::binary);
+            assert( raw3.is_open() == true );
+            raw3.write((char *)vE, NUM_NEURONS*sizeof(float));
+            raw3.close();
+#endif
 
             int indexWin = -1;
             for (int indx = 0; indx < NUM_NEURONS; ++indx) {
@@ -319,9 +335,13 @@ int main()
                 assert( group < NUM_NEURONS/16);
 
                 if( ( spikes_Ae_Ai_pre[group] & (1 << index) ) != 0 ){
-                    //cout << "[" << t << ", " << indx << "]" << endl;
                     indexWin = (indexWin == -1) ? indx : indexWin;
-                    if( PRINT_ENABLE ){
+
+                    uint32_t indxArrBD = (numSample-1)*(NUM_NEURONS*SINGLE_SAMPLE_TIME)+indx*SINGLE_SAMPLE_TIME+t;
+
+                    indexArray[indxArrBD] = 1;
+
+                    if( PRINT_ENABLE_INDEX ){
                         printf("\nt=[%d]; indexWin[%d]",t,indx); cout << endl;
                     }
                 }
@@ -355,50 +375,36 @@ int main()
             }
 
             // 2. Update I neurons
-            int32_t res = 0;
-            void *ptrF = nullptr;
-            int32_t resultBits = 0;
-
             uint16_t indexInh = 0, groupInh = 0;
-
-            for (int i = 0; i < NUM_NEURONS; ++i) {
+            float iSynInh = 0.0f;
+            for (int i = 0; i < NUM_NEURONS; ++i)
+            {
                 // Decay voltages.
                 vI[i] = 0.904837429523468017578125 * (vI[i] - (-60.0f)) + (-60.0f);
+                iSynInh = 0.0f;
 
                 // Integrate inputs.
-                vSyn = 0.0;
-                for (unsigned int j = 0; j < NUM_NEURONS; ++j) {
-
+                for (int j = 0; j < NUM_NEURONS; ++j) {
                     index = j % 16; //(sizeof (uint16_t) * 8)
                     group = (j - index) / 16; //(sizeof (uint16_t) * 8)
 
                     assert( index < 16);
                     assert( group < NUM_NEURONS/16);
 
-                    ptrF = &weightsAeAi[i*NUM_NEURONS+j];
-
-                    res = (spikes_Ae_Ai_pos[group] & (1 << index)) >> index;
-                    res = ~res;
-                    res++;
-                    // Computo de la sinapsis entre flotante y entero usando casting de apuntadores
-                    resultBits = res & *(int*)ptrF;
-
-                    //vSyn += spikesXePos[i] ? weightsXeAe[i*NUM_NEURONS+j] : 0.0f ;
-                    vSyn += *(float*)&resultBits;
-
-                    //vSyn += spikes_Ae_Ai_pos[j] ? weightsAeAi[i*NUM_NEURONS+j] : 0.0f ;
+                    iSynInh += ( (spikes_Ae_Ai_pos[group]) & (1 << index) ) ? weightsAeAi[i*NUM_NEURONS+j] : 0.0f;
                 }
 
                 if( refrac_countI[i] > 0 )
-                    vSyn = 0;
+                    iSynInh = 0;
 
-                vI[i] += vSyn;
+                vI[i] += iSynInh;
 
                 // Decrement refractory counters.
                 refrac_countI[i] -= 1;
 
                 // Check for spiking neurons.
-                if ( vI[i] > -40.0 ){
+                if ( vI[i] > -40.0 )
+                {
                     refrac_countI[i] =  2; // refrac_i = 2; // [ms]
                     vI[i] =  -45.0f; // v_reset_i = -45.0;    // [mV]
                     for (int j = 0; j < tamVector; ++j) {
@@ -411,10 +417,17 @@ int main()
                     assert( indexInh < 16);
                     assert( groupInh < NUM_NEURONS/16);
 
-                    spikes_Ai_Ae_pre[groupInh] = (1 << indexInh);
+                    spikes_Ai_Ae_pre[groupInh] |= (1 << indexInh);
                 }
 
             }
+
+#if PRINT_INH_NEURONS_FILE
+            std::ofstream raw ("C:/Users/jonfe/Documents/GitHub/DATABASE_SNN/classification/vICpp.dat", std::ofstream::binary);
+            assert( raw.is_open() == true );
+            raw.write((char *)vI, NUM_NEURONS*sizeof(float));
+            raw.close();
+#endif
 
             // The arrays are exchanged for the next iteration of time
             for (int indx = 0; indx < tamVectorPixels; ++indx) {
@@ -457,10 +470,12 @@ int main()
             }
         }
 
+#if PRINT_ENABLE_INDEX == true
         std::cout << "Digit class: " << indWinner << std::endl;
+#endif
 
-        std::ofstream fileLabels;
-        std::string filenameLabels = std::string(PATH_RESULTS_NET) + "labelsQt" + std::to_string(NUM_NEURONS) +"N_64ms_test_Exc_Inh_bin.csv";
+#if SAVE_FILE == true
+        ofstream fileLabels;
         fileLabels.open(filenameLabels, std::ofstream::out | std::ofstream::app);
         if (!fileLabels.is_open())
         {
@@ -470,6 +485,7 @@ int main()
 
         fileLabels << indWinner << std::endl;
         fileLabels.close();
+#endif
 
         //! =====     =====     =====
         //! Reset Variables
@@ -504,6 +520,32 @@ int main()
     // Calculating total time taken by the program.
     double time_taken = double(end - start);
     cout << "Time taken by program is : " << time_taken << " sec" << endl;
+
+#if PRINT_ENABLE_INDEX == true
+    std::ofstream raw (fileNameIndexNeurons, std::ofstream::binary);
+    assert( raw.is_open() == true );
+    raw.write((char *)indexArray, TOTAL_SAMPLES*NUM_NEURONS*SINGLE_SAMPLE_TIME*sizeof(uint16_t));
+    raw.close();
+#endif
+
+    free(indexArray);
+    delete [] theta;
+    delete [] weightsXeAe;
+    delete [] weightsAeAi;
+    delete [] weightsAiAe;
+    delete [] input_sample;
+    delete [] spikesXePre;
+    delete [] spikesXePos;
+    delete [] spikes_Ae_Ai_pre;
+    delete [] spikes_Ae_Ai_pos;
+    delete [] spikes_Ai_Ae_pre;
+    delete [] spikes_Ai_Ae_pos;
+    delete [] spike_count;
+    delete [] assignments;
+    delete [] vE;
+    delete [] vI;
+    delete [] refrac_countE;
+    delete [] refrac_countI;
 
     return 0;
 }
